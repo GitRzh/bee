@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BEE — Showdown</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<!-- CodeMirror -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body style="overflow:hidden;">
+
+<div class="screen active" id="s2" style="flex-direction:row;">
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="hex-bg" style="opacity:0.3;"></div>
+    <div style="position:relative;z-index:1;display:flex;flex-direction:column;height:100%;overflow:hidden;">
+      <div class="sidebar-logo">
+        <div class="logo-hex"><canvas id="logoCanvas" width="30" height="30"></canvas></div>
+        <span class="logo-name">BEE</span>
+      </div>
+
+      <div class="sidebar-top-block">
+        <div>
+          <div class="sidebar-label">Session</div>
+          <div class="stat-row"><span class="stat-name">Status</span><span class="stat-val" id="statusVal" style="color:var(--green);">● Active</span></div>
+          <div class="stat-row"><span class="stat-name">Progress</span><span class="stat-val" id="progressVal">1 / 15</span></div>
+          <div class="stat-row"><span class="stat-name">Section</span><span class="stat-val" id="sectionVal">—</span></div>
+          <div class="stat-row"><span class="stat-name">Difficulty</span><span class="stat-val" id="difficultyVal">—</span></div>
+        </div>
+        <div class="divider"></div>
+        <div>
+          <div class="sidebar-label">Skills</div>
+          <div class="skill-tags" id="skillTags"></div>
+        </div>
+      </div>
+
+      <div class="sidebar-scroll">
+        <div class="section-group">
+          <div class="section-group-label">Theory</div>
+          <div class="q-dots" id="dotsTheory"></div>
+        </div>
+        <div class="section-group">
+          <div class="section-group-label">Aptitude</div>
+          <div class="q-dots" id="dotsAptitude"></div>
+        </div>
+        <div class="section-group">
+          <div class="section-group-label">Coding</div>
+          <div class="q-dots" id="dotsCoding"></div>
+        </div>
+        <div class="section-group">
+          <div class="section-group-label">HR</div>
+          <div class="q-dots" id="dotsHr"></div>
+        </div>
+
+        <div class="history-divider">History</div>
+        <div id="historyList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Panel -->
+  <div class="main-panel" id="mainPanel">
+    <div class="hex-bg" style="opacity:0.15;"></div>
+    <div style="position:relative;z-index:1;display:flex;flex-direction:column;height:100%;">
+      <div class="topbar">
+        <div class="topbar-info"><div class="status-dot"></div>Interview Active</div>
+        <div class="topbar-timer" id="timerDisplay">00:00</div>
+      </div>
+
+      <div class="interview-area">
+
+        <!-- Warning banner — stays until next question -->
+        <div class="banner warn" id="warnBanner" style="display:none;">
+          <i class="fas fa-exclamation-triangle"></i>
+          <div><strong>Stay on topic!</strong><span> Answer the question asked or this response will be failed.</span></div>
+        </div>
+        <!-- Short answer banner — stays until next question -->
+        <div class="banner danger" id="shortBanner" style="display:none;">
+          <i class="fas fa-times-circle"></i>
+          <span>Answer too short — please provide a more detailed response.</span>
+        </div>
+        <!-- Evaluating banner — shows during API call -->
+        <div class="banner info" id="evalBanner" style="display:none;">
+          <i class="fas fa-spinner fa-spin"></i>
+          <span>Evaluating your answer...</span>
+        </div>
+
+        <!-- Question card -->
+        <div class="q-card" id="questionCard">
+          <div class="q-meta">
+            <span class="q-tag" id="qTypeTag">Theory</span>
+            <span class="q-tag" id="qDiffTag">Easy</span>
+            <span class="q-num" id="qNum">(01 / 15)</span>
+            <button class="rephrase-btn" id="rephraseBtn" onclick="rephraseQuestion()">
+              <i class="fas fa-sync-alt"></i> Rephrase <span class="rephrase-count" id="rephraseCount">2</span>
+            </button>
+          </div>
+          <div class="q-text" id="questionText">Loading question...</div>
+        </div>
+
+        <!-- Normal answer textarea (theory/aptitude/hr) -->
+        <div class="answer-box" id="answerBox">
+          <textarea class="answer-ta" id="answerTa" placeholder="Type your answer here..."></textarea>
+          <div class="answer-footer">
+            <span class="char-ct" id="charCt">0 chars</span>
+            <button class="submit-btn" id="submitBtn" onclick="submitAnswer()">
+              <i class="fas fa-paper-plane"></i> Submit Answer
+            </button>
+          </div>
+        </div>
+
+        <!-- Code editor (coding questions only) -->
+        <div class="code-editor-box" id="codeEditorBox" style="display:none;">
+          <div class="code-editor-header">
+            <div class="code-editor-title">
+              <i class="fas fa-code"></i>
+              <span>Code Editor</span>
+              <span class="code-editor-hint">Write in any language</span>
+            </div>
+            <div class="lang-selector-wrap">
+              <span class="lang-label">Language</span>
+              <div class="lang-select-container">
+                <select class="lang-select" id="langSelect" onchange="changeLanguage(this.value)">
+                  <option value="python">Python</option>
+                  <option value="javascript">JavaScript</option>
+                  <option value="java">Java</option>
+                  <option value="cpp">C++</option>
+                  <option value="c">C</option>
+                  <option value="go">Go</option>
+                  <option value="rust">Rust</option>
+                  <option value="typescript">TypeScript</option>
+                  <option value="ruby">Ruby</option>
+                  <option value="kotlin">Kotlin</option>
+                  <option value="swift">Swift</option>
+                  <option value="r">R</option>
+                  <option value="scala">Scala</option>
+                  <option value="matlab">MATLAB / Pseudocode</option>
+                </select>
+                <i class="fas fa-chevron-down lang-select-arrow"></i>
+              </div>
+            </div>
+          </div>
+          <div class="cm-wrapper" id="cmWrapper"></div>
+          <div class="answer-footer code-footer">
+            <span class="char-ct" id="codeCharCt">0 chars</span>
+            <button class="submit-btn" id="codeSubmitBtn" onclick="submitAnswer()">
+              <i class="fas fa-paper-plane"></i> Submit Code
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Loading overlay -->
+    <div class="loading-overlay" id="loadOverlay" style="display:none;">
+      <div class="loading-neural"><canvas id="loadCanvas" width="70" height="70"></canvas></div>
+      <div class="loading-text" id="loadingText">Evaluating answer...</div>
+    </div>
+  </div>
+</div>
+
+<!-- CodeMirror core + modes -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/clike/clike.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/go/go.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/rust/rust.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/ruby/ruby.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/r/r.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/mllike/mllike.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
+<script src="interview.js"></script>
+</body>
+</html>

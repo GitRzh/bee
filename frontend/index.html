@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BEE — Get a load of this guy.</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="screen active" id="s1">
+  <canvas id="sparkleCanvas"></canvas>
+  <div id="cursorGlow"></div>
+  <div class="hex-bg"></div>
+  <div class="orb orb1"></div>
+  <div class="orb orb2"></div>
+  <div class="s1-content" style="gap:38px;display:flex;flex-direction:column;align-items:center;">
+    <div class="neural-wrap" id="neuralWrap" onclick="onBallClick()">
+      <canvas id="neuralCanvas" width="200" height="200"></canvas>
+      <div class="neural-glow"></div>
+      <div class="speech-bubble dir-right" id="speechBubble"></div>
+    </div>
+    <div class="bee-title-wrap" id="beeTitleWrap">
+      <h1 class="bee-title" id="beeTitle"><span id="beeTitleText"></span><span class="bee-cursor" id="beeCursor"></span></h1>
+    </div>
+    <p style="color:var(--text2);font-size:0.85rem;letter-spacing:1px;margin-top:-18px;font-family:'Space Mono',monospace;">Beeeeeeeee bEeeeeeeeee beEeeeee</p>
+    <div class="s1-options">
+      <div class="opt-card" onclick="openModal('skillsModal')">
+        <div class="opt-num">(01)</div>
+        <div class="opt-label">Enter<br>Skills</div>
+        <div class="opt-sub">Type your AI/ML and tech skills manually</div>
+        <div class="opt-icon-box"><i class="fas fa-keyboard"></i></div>
+      </div>
+      <div class="opt-card" onclick="openModal('resumeModal')">
+        <div class="opt-num">(02)</div>
+        <div class="opt-label">Upload<br>Resume</div>
+        <div class="opt-sub">Auto-extract skills from PDF or TXT</div>
+        <div class="opt-icon-box"><i class="fas fa-file-upload"></i></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Skills Modal -->
+  <div class="modal-overlay" id="skillsModal" style="display:none;" onclick="bgClose(event,'skillsModal')">
+    <div class="modal-card" onclick="event.stopPropagation()">
+      <div class="modal-tag">// start session</div>
+      <div class="modal-title">Your AI/ML Skills</div>
+      <div class="modal-warn" id="skillWarn" style="display:none;">
+        <i class="fas fa-exclamation-triangle"></i>
+        <span id="skillWarnText">Please enter valid AI/ML skills.</span>
+      </div>
+      <input class="modal-input" id="skillsInput" placeholder="e.g. Python, TensorFlow, NLP, Computer Vision" />
+      <div class="modal-row">
+        <button class="modal-btn-sec" onclick="closeModal('skillsModal')">Cancel</button>
+        <button class="modal-btn-pri" id="skillsStartBtn" onclick="startWithSkills()">Start Interview →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Resume Modal -->
+  <div class="modal-overlay" id="resumeModal" style="display:none;" onclick="bgClose(event,'resumeModal')">
+    <div class="modal-card" onclick="event.stopPropagation()">
+      <div class="modal-tag">// upload resume</div>
+      <div class="modal-title">Upload Resume</div>
+      <div class="modal-warn" id="resumeWarn" style="display:none;">
+        <i class="fas fa-exclamation-triangle"></i>
+        <span id="resumeWarnText">Error uploading resume.</span>
+      </div>
+      <div class="file-drop" id="fileDrop" onclick="document.getElementById('fileInput').click()">
+        <i class="fas fa-cloud-upload-alt" id="fileDropIcon"></i>
+        <p id="fileDropText">Click to upload PDF or TXT</p>
+        <p style="color:var(--text3);font-size:0.7rem;margin-top:4px;">Max 10MB</p>
+      </div>
+      <input type="file" id="fileInput" accept=".pdf,.txt" style="display:none;" onchange="handleFileSelect(event)">
+      <div class="modal-row">
+        <button class="modal-btn-sec" onclick="closeModal('resumeModal')">Cancel</button>
+        <button class="modal-btn-pri" id="resumeStartBtn" onclick="startWithResume()" style="opacity:0.4;cursor:not-allowed;" disabled>Start Interview →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Global loading overlay -->
+  <div class="modal-overlay" id="globalLoading" style="display:none;">
+    <div class="modal-card" style="align-items:center;gap:20px;">
+      <div class="loading-neural" style="width:70px;height:70px;position:relative;">
+        <canvas id="loadCanvas" width="70" height="70"></canvas>
+      </div>
+      <div class="loading-text" id="loadingText">Generating interview...</div>
+    </div>
+  </div>
+</div>
+
+<script src="landing.js"></script>
+</body>
+</html>

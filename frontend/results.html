@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BEE — Results</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body style="overflow:hidden;">
+
+<div class="screen active" id="s3" style="flex-direction:row;">
+
+  <!-- Results Sidebar -->
+  <div class="results-sidebar">
+    <div class="hex-bg" style="opacity:0.3;"></div>
+    <div style="position:relative;z-index:1;display:flex;flex-direction:column;min-height:100%;gap:18px;">
+      <div class="results-logo">
+        <div class="logo-hex2"><canvas id="logoCanvas2" width="30" height="30"></canvas></div>
+        <span>BEE</span>
+      </div>
+
+      <div class="score-wrap">
+        <div class="score-ring">
+          <svg viewBox="0 0 120 120" width="120" height="120">
+            <circle class="ring-track" cx="60" cy="60" r="50"/>
+            <circle class="ring-fill" id="ringFill" cx="60" cy="60" r="50"
+              stroke="url(#goldGrad)" stroke-dasharray="314" stroke-dashoffset="314"/>
+            <defs>
+              <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#8a6500"/>
+                <stop offset="50%" stop-color="#d4a017"/>
+                <stop offset="100%" stop-color="#f5c842"/>
+              </linearGradient>
+            </defs>
+          </svg>
+          <div class="score-inner">
+            <span class="score-pct" id="scorePct">—%</span>
+            <span class="score-lbl">SCORE</span>
+          </div>
+        </div>
+        <div class="verdict-pill good" id="verdictPill">—</div>
+      </div>
+
+      <div>
+        <div class="r-section-title">Breakdown</div>
+        <div class="section-block" id="sectionBreakdown">
+          <div class="sec-row">
+            <div class="sec-top"><span class="sec-name">Theory</span><span class="sec-pct" id="theoryPct">—%</span></div>
+            <div class="mini-bar"><div class="mini-fill" id="theoryBar" style="width:0%"></div></div>
+          </div>
+          <div class="sec-row">
+            <div class="sec-top"><span class="sec-name">Aptitude</span><span class="sec-pct" id="aptitudePct">—%</span></div>
+            <div class="mini-bar"><div class="mini-fill" id="aptitudeBar" style="width:0%"></div></div>
+          </div>
+          <div class="sec-row">
+            <div class="sec-top"><span class="sec-name">Coding</span><span class="sec-pct" id="codingPct">—%</span></div>
+            <div class="mini-bar"><div class="mini-fill" id="codingBar" style="width:0%"></div></div>
+          </div>
+          <div class="sec-row">
+            <div class="sec-top"><span class="sec-name">HR</span><span class="sec-pct" id="hrPct">—%</span></div>
+            <div class="mini-bar"><div class="mini-fill" id="hrBar" style="width:0%"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="r-actions">
+        <button class="rbtn-pri" onclick="restartInterview()"><i class="fas fa-redo"></i> Start Again</button>
+        <button class="rbtn-sec" onclick="window.location.href='index.html'"><i class="fas fa-sign-out-alt"></i> Exit</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Results Main -->
+  <div class="results-main">
+
+    <div id="weakAreasSection">
+      <div class="r-section-title">Weak Areas</div>
+      <div id="weakAreasList"></div>
+    </div>
+
+    <div id="suggestionsSection">
+      <div class="r-section-title">Improvement Suggestions</div>
+      <div id="suggestionsList"></div>
+    </div>
+
+    <div id="resourcesSection">
+      <div class="r-section-title">Learning Resources</div>
+      <div id="resourcesList"></div>
+    </div>
+
+    <div id="reviewSection">
+      <div class="r-section-title">Question Review</div>
+      <div id="reviewList"></div>
+    </div>
+
+  </div>
+</div>
+
+<script src="results.js"></script>
+</body>
+</html>
