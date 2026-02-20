@@ -1,6 +1,6 @@
 # BEE — Behavioral Evaluation Engine
 
-> A mock interview tool that generates questions using a quantized LLM (Qwen2.5-7B via HuggingFace), grades your answers, and gives you a breakdown of where you stand. No fluff, no hand-holding. :)
+> A mock interview tool that generates questions using a quantized LLM (Qwen2.5-7B via HuggingFace), grades your answers, and gives you a breakdown.
 
 ---
 
@@ -63,7 +63,7 @@ bee/
 
 **1. Clone the repo**
 ```bash
-git clone https://github.com/your-username/bee.git
+git clone https://github.com/GitRzh/bee.git
 cd bee
 ```
 
@@ -99,7 +99,7 @@ Open `http://localhost:8000` in your browser. That's it. :P
 
 ---
 
-## Caution :0
+## Caution :O
 
 A few things to know before you go in:
 
@@ -117,4 +117,4 @@ A few things to know before you go in:
 
 ---
 
-*Made for practice. Don't use this as a substitute for actual interview prep. :)*
+*A project, don't use this as a substitute for actual interview prep.*
