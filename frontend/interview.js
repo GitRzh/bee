@@ -1,6 +1,6 @@
 /* interview.js — BEE interview page logic */
 
-const API = window.location.port === '8000' ? '' : 'http://localhost:8000';
+const API = '';
 let sessionId = null;
 let skills = [];
 let currentQuestion = null;
