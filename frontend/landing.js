@@ -1,6 +1,6 @@
 /* landing.js — BEE landing page logic */
 
-const API = window.location.port === '8000' ? '' : 'http://localhost:8000';
+const API = '';
 
 // ── Modal helpers ──
 function openModal(id) {
