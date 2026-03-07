@@ -184,7 +184,7 @@ async def start_with_resume(file: UploadFile = File(...)):
             raise HTTPException(400, "Resume content too short or invalid")
 
         # Reuse shared controller client — no extra instance
-        skills = await controller.mistral_client.extract_skills(text)
+        skills = await controller.qwen_client.extract_skills(text)
 
         if not skills:
             raise HTTPException(400, "Could not extract AI/ML skills from resume")
