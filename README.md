@@ -20,7 +20,7 @@ You drop in your skills (or upload a resume), and BEE puts together a 15-questio
 
 ## Tech Stack
 
-| Layer | What |
+| Layer | Has |
 |---|---|
 | Backend | Python, FastAPI, Uvicorn |
 | LLM | Qwen2.5-7B-Instruct via HuggingFace Inference API |
@@ -60,6 +60,12 @@ bee/
 ---
 
 ## Setup
+
+**0. Install Python**
+
+This project was built and tested on **Python 3.11.9**. It's recommended to use the same version to avoid compatibility issues.
+
+Download it from [python.org/downloads](https://www.python.org/downloads/release/python-3119/).
 
 **1. Clone the repo**
 ```bash
