@@ -1,5 +1,5 @@
 """
-Interview flow controller — uses MistralClient
+Interview flow controller — uses QwenClient
 """
 
 import uuid
@@ -29,7 +29,7 @@ class InterviewSession:
 
 class InterviewController:
     def __init__(self):
-        self.mistral_client = QwenClient()
+        self.qwen_client = QwenClient()
         self.scoring_engine = ScoringEngine()
         self.sessions: Dict[str, InterviewSession] = {}
 
@@ -62,7 +62,7 @@ class InterviewController:
         Gaps filled from local fallbacks.
         """
         async def generate_for_type(q_type, difficulty_counts):
-            generated = await self.mistral_client.generate_questions_batch(
+            generated = await self.qwen_client.generate_questions_batch(
                 session.skills, q_type, difficulty_counts, [],
             )
 
@@ -144,7 +144,7 @@ class InterviewController:
             for i in range(len(session.answers))
         ]
 
-        evaluation = await self.mistral_client.evaluate_answer(
+        evaluation = await self.qwen_client.evaluate_answer(
             current_question["question"],
             answer,
             current_question["topic"],
@@ -173,7 +173,7 @@ class InterviewController:
             return {"error": "No rephrase attempts remaining"}
 
         current_q = session.questions[idx]
-        rephrased = await self.mistral_client.rephrase_question(
+        rephrased = await self.qwen_client.rephrase_question(
             current_q["question"], current_q["type"],
         )
         if not rephrased:
