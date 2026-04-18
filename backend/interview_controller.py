@@ -1,5 +1,8 @@
 """
 Interview flow controller — uses QwenClient
+Offline scoring: OFF_TOPIC detection and scoring is 100% local (no API)
+LLM scoring: Valid answers call qwen_client.evaluate_answer()
+Final results: All scores summed locally via ScoringEngine
 """
 
 import uuid
@@ -120,30 +123,38 @@ class InterviewController:
         current_question = session.questions[session.current_question_index]
         classification = classify_response_local(current_question["question"], answer)
 
+        # OFF-TOPIC HANDLING: 100% OFFLINE (no API calls)
         if classification in ["OFF_TOPIC", "META"]:
             session.off_topic_warnings += 1
             if session.off_topic_warnings == 1:
+                # First off-topic: just warn, don't store anything yet
                 return {
                     "warning": "WARNING: Stay on topic. Answer the question asked or you will fail this question.",
                     "continue": True,
                 }
             else:
+                # Second off-topic: store answer + evaluation OFFLINE (no API call)
                 session.answers.append(answer)
                 session.evaluations.append({
-                    "correctness": 0, "depth": 0, "clarity": 0,
+                    "correctness": 0,
+                    "depth": 0,
+                    "clarity": 0,
                     "feedback": "FAILED: Refused to answer the question properly.",
                 })
                 session.off_topic_warnings = 0
                 session.current_question_index += 1
                 return await self._get_next_question_response(session)
 
+        # Valid answer: reset warning counter and proceed to LLM scoring
         session.off_topic_warnings = 0
 
+        # Build context from previous Q&A pairs
         previous_qa = [
             {"q": session.questions[i]["question"], "a": session.answers[i]}
             for i in range(len(session.answers))
         ]
 
+        # LLM SCORING: Call API only for valid answers
         evaluation = await self.qwen_client.evaluate_answer(
             current_question["question"],
             answer,
@@ -153,9 +164,14 @@ class InterviewController:
         )
 
         if not evaluation:
-            evaluation = {"correctness": 1, "depth": 1, "clarity": 1,
-                          "feedback": "Unable to evaluate. Default low score assigned."}
+            evaluation = {
+                "correctness": 1,
+                "depth": 1,
+                "clarity": 1,
+                "feedback": "Unable to evaluate. Default low score assigned.",
+            }
 
+        # Store answer + evaluation (always in sync)
         session.answers.append(answer)
         session.evaluations.append(evaluation)
         session.current_question_index += 1
@@ -193,6 +209,7 @@ class InterviewController:
 
         if session.current_question_index >= len(session.questions):
             session.status = "completed"
+            # FINAL SCORING: All calculation is LOCAL (no API calls)
             results = self.scoring_engine.calculate_final_results(
                 session.questions, session.evaluations,
             )
