@@ -2,6 +2,7 @@
 FastAPI main application
 """
 
+import os
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -30,16 +31,14 @@ app.add_middleware(
 
 controller = InterviewController()
 
-# Resolve frontend directory
-STATIC_DIR = Path(__file__).parent.parent / "frontend"
-if not STATIC_DIR.exists():
-    STATIC_DIR = Path(__file__).parent.parent / "front"
-if not STATIC_DIR.exists():
-    STATIC_DIR = Path(__file__).parent / "frontend"
-if not STATIC_DIR.exists():
-    STATIC_DIR = Path(__file__).parent / "front"
-if not STATIC_DIR.exists():
-    STATIC_DIR = Path(__file__).parent
+# For HF Spaces: use absolute path from root
+if os.path.exists("/app/frontend"):
+    STATIC_DIR = Path("/app/frontend")
+# For local dev: relative to backend/main.py
+else:
+    STATIC_DIR = Path(__file__).parent.parent / "frontend"
+    if not STATIC_DIR.exists():
+        STATIC_DIR = Path(__file__).parent / "frontend"
 
 print(f"🗁 Serving static files from: {STATIC_DIR}")
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
