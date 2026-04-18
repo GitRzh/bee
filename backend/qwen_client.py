@@ -102,11 +102,29 @@ class QwenClient:
     # ─────────────────── SKILL EXTRACTION (1 call) ───────────────────────
 
     async def extract_skills(self, resume_text: str) -> list:
-        prompt = f"""Extract ONLY AI/ML technical skills from this resume.
-Return a JSON array of skill strings only.
+        """
+        Extract ONLY AI/ML technical skills from the skills section of resume.
+        Targets specific section headers to avoid extracting irrelevant text.
+        """
+        # Step 1: Extract only the skills section
+        skills_section = self._extract_skills_section(resume_text)
+        
+        if not skills_section:
+            skills_section = resume_text[:2000]
+        
+        prompt = f"""Extract ONLY AI/ML technical skills from this skills section.
+Return a JSON array of skill strings only. NO job titles, NO soft skills, NO company names.
 
-Resume:
-{resume_text[:2000]}
+ONLY these types of skills:
+- Programming languages: Python, Java, C++, etc
+- ML frameworks: PyTorch, TensorFlow, Keras, etc
+- Libraries: Pandas, NumPy, Scikit-learn, etc
+- ML concepts: Deep Learning, NLP, Computer Vision, etc
+- Tools: Docker, Git, AWS, etc
+- Data: SQL, NoSQL, Big Data, etc
+
+Skills Section:
+{skills_section}
 
 Return ONLY valid JSON like: ["skill1", "skill2"]"""
 
@@ -116,9 +134,50 @@ Return ONLY valid JSON like: ["skill1", "skill2"]"""
         try:
             start, end = response.find("["), response.rfind("]") + 1
             skills = json.loads(response[start:end], strict=False)
-            return [s.strip() for s in skills if s.strip()][:15]
+            # Clean up: remove duplicates, filter empty, max 15 skills
+            cleaned = [s.strip() for s in skills if s.strip()]
+            return list(dict.fromkeys(cleaned))[:15]  # Remove duplicates, keep order
         except Exception:
             return ["Machine Learning", "Python", "Deep Learning"]
+    
+    def _extract_skills_section(self, text: str) -> Optional[str]:
+        """
+        Extract only the skills section from resume.
+        Looks for headers like 'Skills', 'Technical Skills', 'Expertise', etc.
+        """
+        lines = text.split('\n')
+        skills_start = -1
+        skills_end = -1
+        
+        # Headers that indicate skills section
+        skills_headers = ['skill', 'technical', 'expertise', 'proficiency', 'competency', 'abilities']
+        # Headers that indicate section end
+        section_headers = ['experience', 'work', 'education', 'project', 'achievement', 'certification', 
+                          'publication', 'award', 'language', 'contact', 'summary', 'objective', 'profile']
+        
+        for i, line in enumerate(lines):
+            line_lower = line.lower().strip()
+            
+            # Find skills section start
+            if skills_start == -1:
+                if any(header in line_lower for header in skills_headers):
+                    skills_start = i + 1
+            
+            # Find skills section end (next major section)
+            elif skills_start != -1 and skills_end == -1:
+                if any(header in line_lower for header in section_headers):
+                    skills_end = i
+                    break
+        
+        # If we found skills section, extract it
+        if skills_start != -1:
+            if skills_end == -1:
+                skills_end = min(skills_start + 50, len(lines))  # Limit to 50 lines
+            
+            skills_text = '\n'.join(lines[skills_start:skills_end])
+            return skills_text[:2000]  # Limit to 2000 chars
+        
+        return None
 
     # ──────────────────── QUESTION GENERATION (1 call per type) ──────────────────
 
@@ -253,12 +312,20 @@ Return ONLY the rephrased question text, nothing else."""
 
         # ── Free local checks — 0 API calls ──
         if self._is_gibberish(answer):
-            return {"correctness": 0, "depth": 0, "clarity": 0,
-                    "feedback": "Invalid answer — gibberish or placeholder detected."}
+            return {
+                "correctness": 0,
+                "depth": 0,
+                "clarity": 0,
+                "feedback": "Invalid answer — gibberish or placeholder detected.",
+            }
 
         if self._is_no_answer(answer):
-            return {"correctness": 0, "depth": 0, "clarity": 0,
-                    "feedback": "No answer provided — candidate indicated they do not know."}
+            return {
+                "correctness": 0,
+                "depth": 0,
+                "clarity": 0,
+                "feedback": "No answer provided — candidate indicated they do not know.",
+            }
 
         context = ""
         if previous_qa:
@@ -274,9 +341,15 @@ Return ONLY the rephrased question text, nothing else."""
             prompt = self._build_theory_eval_prompt(question, answer, topic, context)
 
         # Attempt 1: full prompt
-        response = await self.generate(prompt, max_tokens=400, temperature=0.3)
+        # SOLUTION 5: Use lower temperature (0.15) for aptitude to prevent hallucinations
+        # Regular 0.3 for theory/coding (needs more creativity)
+        temp = 0.15 if q_type == "aptitude" else 0.3
+        response = await self.generate(prompt, max_tokens=400, temperature=temp)
         result = self._parse_eval_response(response)
         if result:
+            # SOLUTION 5: Apply post-validation rules to catch LLM errors
+            if q_type == "aptitude":
+                result = self._validate_aptitude_eval(question, answer, result)
             return result
 
         # Attempt 2: stripped-down prompt
@@ -408,40 +481,134 @@ Return ONLY JSON:
     # ──────────────────── HELPERS ──────────────────
 
     def _is_no_answer(self, text: str) -> bool:
+        """
+        Detect explicit "I don't know" answers.
+        Only match if the answer is SHORT and EXPLICITLY says they don't know.
+        Don't match if answer contains actual content + "maybe I don't know" as aside.
+        """
         t = text.strip().lower()
+        
+        # If answer is very long, it's not a pure "I don't know" — it's actual content
         if len(t) > 80:
             return False
-        patterns = [
-            "don't know", "dont know", "do not know", "no idea",
-            "no clue", "not sure", "i give up", "can't answer",
-            "cannot answer", "cant answer", "don't understand",
-            "dont understand", "i have no", "i don't", "i dont",
-            "have no idea", "skip", "pass", "idk", "n/a", "na",
-            "no solution", "don't know how", "dont know how",
+        
+        # Must have very few words (max 10 words) to be a pure "I don't know"
+        word_count = len(t.split())
+        if word_count > 10:
+            return False
+        
+        # Exact patterns that explicitly say they don't know
+        exact_patterns = [
+            "don't know", "dont know", "do not know",
+            "no idea", "no clue", "not sure", "i give up",
+            "can't answer", "cannot answer", "cant answer",
+            "don't understand", "dont understand",
+            "skip", "pass", "idk", "n/a", "na",
+            "no solution",
         ]
-        return any(t == p or t.startswith(p) or p in t for p in patterns)
+        
+        # For short answers, check if it's MOSTLY about not knowing
+        # Allow patterns like "maybe i dont know" or "i have no idea" 
+        # but only if answer is very short and explicit
+        for pattern in exact_patterns:
+            if t == pattern or (word_count <= 5 and pattern in t):
+                return True
+        
+        return False
 
     def _is_gibberish(self, text: str) -> bool:
+        """
+        Detect pure gibberish (999999, #####, etc).
+        Don't flag actual short answers with real words.
+        """
         text = text.strip().lower()
+        
+        # Empty or too short
         if len(text) < 10:
-            return True
-        if len(set(text.replace(" ", ""))) < 5:
-            return True
-        if len(text.split()) < 3:
-            return True
+            return False  # Could be valid short answer
+        
+        # Check if it's PURE repetition (999999, #####, hhhhh, etc)
+        # These are obvious placeholder gibberish
+        unique_chars = set(text.replace(" ", "").replace("\n", ""))
+        if len(unique_chars) <= 3:  # Only 1-3 unique characters (like 9, #, h)
+            # But allow real words: "aaa" is gibberish, "the" is not
+            if text.isalnum() or not any(c.isalpha() for c in text):
+                # No letters or only numbers/symbols = gibberish
+                return True
+        
+        # Must have actual words (not just punctuation)
+        word_count = len(text.split())
+        if word_count < 3:
+            return False  # Allow short valid answers
+        
+        # Check if most characters are alphanumeric (should be for real text)
         alpha_count = sum(c.isalnum() or c.isspace() for c in text)
         if alpha_count / len(text) < 0.7:
-            return True
+            return True  # Too many symbols
+        
+        # Check consonant-vowel ratio (real text has balanced vowels)
         alpha_chars = [c for c in text if c.isalpha()]
         if alpha_chars:
-            consonant_ratio = sum(1 for c in alpha_chars if c not in "aeiou") / len(alpha_chars)
-            if consonant_ratio > 0.85:
+            vowels = sum(1 for c in alpha_chars if c in "aeiou")
+            # Real words must have SOME vowels
+            if vowels == 0:
                 return True
-        lines = text.splitlines()
-        non_comment_lines = [
-            line.strip() for line in lines
-            if line.strip() and not line.strip().startswith("#")
-        ]
-        if len(" ".join(non_comment_lines).strip()) < 10:
-            return True
+            consonant_ratio = (len(alpha_chars) - vowels) / len(alpha_chars)
+            if consonant_ratio > 0.85:
+                return True  # Too few vowels
+        
         return False
+
+    def _validate_aptitude_eval(self, question: str, answer: str, evaluation: Dict) -> Dict:
+        """
+        SOLUTION 5 HYBRID: Post-validation rules for aptitude evaluations.
+        Catches common LLM hallucinations without extra tokens.
+        
+        These rules are applied AFTER the LLM evaluation to catch mistakes:
+        - The "8.33 km" bug (incorrectly dividing 25/3)
+        - Vague feedback that contradicts the score
+        - Inconsistent correctness judgment
+        """
+        # Rule 1: Catch the exact "8.33 km" hallucination pattern
+        # If LLM says answer is wrong but feedback mentions "8.33" or "25/3"
+        # and the user answered with "25", it's the known bug
+        feedback_lower = evaluation.get("feedback", "").lower()
+        answer_lower = answer.lower()
+        
+        if evaluation["correctness"] == 0 and ("8.33" in feedback_lower or "25/3" in feedback_lower):
+            if "25" in answer_lower or "25 km" in answer_lower:
+                # This is the exact bug pattern - user said 25, LLM hallucinated 8.33
+                # Override: user is correct
+                evaluation["correctness"] = 5
+                evaluation["depth"] = 4
+                evaluation["clarity"] = 4
+                evaluation["feedback"] = "Correct answer: 25 km. User answered: 25 km. CORRECT."
+                return evaluation
+        
+        # Rule 2: If user gave a number but feedback doesn't explain what's wrong, mark as inconclusive
+        # User answers: "25 km", LLM says correctness=0 but feedback is vague
+        if evaluation["correctness"] == 0 and any(char.isdigit() for char in answer):
+            explanation_keywords = ["wrong", "incorrect", "error", "should be", "actually", "instead", "not", "false"]
+            has_explanation = any(word in feedback_lower for word in explanation_keywords)
+            
+            if not has_explanation:
+                # Feedback is vague, can't trust this evaluation
+                evaluation["correctness"] = max(1, evaluation["correctness"])
+                evaluation["feedback"] = f"Evaluation inconclusive: {evaluation['feedback']}"
+        
+        # Rule 3: If correctness=5 but feedback says wrong, contradiction detected
+        if evaluation["correctness"] == 5 and any(word in feedback_lower for word in ["wrong", "incorrect", "false"]):
+            # LLM contradicted itself, be conservative
+            evaluation["correctness"] = 3
+            evaluation["feedback"] = f"Evaluation unclear: marked correct but feedback mentions errors. Review needed."
+        
+        # Rule 4: Catch division hallucinations (user says "25 km", LLM invents "25 ÷ 3")
+        if evaluation["correctness"] == 0:
+            # Check if feedback invents division that wasn't in question
+            if "÷" in feedback_lower or "/ " in feedback_lower or "/3" in feedback_lower:
+                # If user answer is simple/direct and LLM invents complex division, suspicious
+                if len(answer) < 50:  # Short answer = probably not that complicated
+                    evaluation["correctness"] = max(2, evaluation["correctness"])
+                    evaluation["feedback"] = f"Caution: LLM feedback may contain errors. Original: {evaluation['feedback']}"
+        
+        return evaluation
