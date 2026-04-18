@@ -83,17 +83,20 @@ class ScoringEngine:
             else:
                 section["percentage"] = 0.0
 
-        # Identify weakest areas
+        # Identify weakest areas (FILTER: only technical/math topics)
         weak_areas = []
         for topic, data in weak_topics.items():
-            avg_score = data["total_score"] / data["count"]
-            weak_areas.append(
-                {
-                    "topic": topic,
-                    "avg_score": round(avg_score, 1),
-                    "questions_failed": data["count"],
-                }
-            )
+            # FILTER: Skip vague topics like "seating arrangements", "permutations without business context"
+            # Only include: ML concepts, coding, mathematical topics, technical skills
+            if self._is_technical_topic(topic):
+                avg_score = data["total_score"] / data["count"]
+                weak_areas.append(
+                    {
+                        "topic": topic,
+                        "avg_score": round(avg_score, 1),
+                        "questions_failed": data["count"],
+                    }
+                )
 
         weak_areas.sort(key=lambda x: x["avg_score"])
 
@@ -132,6 +135,56 @@ class ScoringEngine:
             ),
             "learning_resources": resources,
         }
+    
+    def _is_technical_topic(self, topic: str) -> bool:
+        """
+        Filter to only show technical/math topics.
+        Exclude vague topics like 'seating arrangements', 'puzzles', etc.
+        """
+        topic_lower = topic.lower()
+        
+        # INCLUDE: Technical and math topics
+        technical_keywords = [
+            "python", "java", "c++", "javascript", "sql", "rust", "golang",
+            "machine learning", "deep learning", "ml", "ai", "nlp", "neural",
+            "tensorflow", "pytorch", "keras", "scikit", "pandas", "numpy",
+            "algorithm", "data structure", "sorting", "search", "hash", "tree",
+            "graph", "dynamic programming", "optimization", "gradient", "regression",
+            "classification", "clustering", "time series", "nlp", "computer vision",
+            "cnn", "rnn", "lstm", "gru", "attention", "transformer", "bert", "gpt",
+            "reinforcement learning", "supervised", "unsupervised", "transfer learning",
+            "feature engineering", "cross validation", "hyperparameter", "overfitting",
+            "bias variance", "regularization", "dropout", "batch norm", "activation",
+            "loss function", "optimization", "sgd", "adam", "momentum",
+            "docker", "kubernetes", "aws", "gcp", "azure", "git", "devops",
+            "sql", "nosql", "mongodb", "postgresql", "redis", "spark", "hadoop",
+            "api", "rest", "graphql", "microservice", "distributed", "system design",
+            "speed", "distance", "average", "probability", "combination", "permutation",
+            "statistics", "linear algebra", "calculus", "matrix", "vector", "eigenvalue",
+            "oop", "design pattern", "solid", "abstraction", "encapsulation"
+        ]
+        
+        # EXCLUDE: Vague, non-technical topics
+        exclude_keywords = [
+            "seating", "arrangement", "puzzle", "riddle", "behavioral", "star method",
+            "soft skill", "communication", "leadership", "teamwork", "interview",
+            "resume", "project description", "work experience", "story", "challenge"
+        ]
+        
+        # Check excludes first
+        if any(keyword in topic_lower for keyword in exclude_keywords):
+            return False
+        
+        # Check includes
+        if any(keyword in topic_lower for keyword in technical_keywords):
+            return True
+        
+        # Default: if it has numbers/specific math terms, include it
+        if any(char.isdigit() for char in topic_lower):
+            return True
+        
+        # Unknown topics: exclude by default
+        return False
 
     def _generate_suggestions(
         self, section_scores: Dict, weak_areas: List
